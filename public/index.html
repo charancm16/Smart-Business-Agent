@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Business Agent — IBM watsonx</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ══════════════════════════════════════════════════════
+       DESIGN TOKENS
+    ══════════════════════════════════════════════════════ */
+    :root {
+      --bg-base:        #0A1628;
+      --bg-surface:     #0D1E38;
+      --bg-elevated:    #1A2C42;
+      --bg-card:        rgba(255,255,255,0.04);
+      --bg-card-hover:  rgba(255,255,255,0.07);
+      --bg-glass:       rgba(13,30,56,0.8);
+      --border:         rgba(255,255,255,0.08);
+      --border-strong:  rgba(255,255,255,0.14);
+      --accent:         #4285F4;
+      --accent-dim:     rgba(66,133,244,0.15);
+      --accent-glow:    rgba(66,133,244,0.25);
+      --accent-bright:  #6BA3FF;
+      --success:        #34A853;
+      --warning:        #FBBC04;
+      --danger:         #EA4335;
+      --text-primary:   #E8EDF2;
+      --text-secondary: #8FA3B8;
+      --text-muted:     #4A6278;
+      --text-accent:    #6BA3FF;
+      --radius-sm:      6px;
+      --radius-md:      10px;
+      --radius-lg:      14px;
+      --radius-xl:      20px;
+      --transition:     0.25s cubic-bezier(0.4,0,0.2,1);
+      --shadow-sm:      0 1px 4px rgba(0,0,0,0.4);
+      --shadow-md:      0 4px 16px rgba(0,0,0,0.5);
+      --shadow-lg:      0 8px 32px rgba(0,0,0,0.6);
+      --shadow-accent:  0 4px 20px rgba(66,133,244,0.3);
+      --font-head:      "IBM Plex Sans", system-ui, sans-serif;
+      --font-body:      "Inter", system-ui, sans-serif;
+      --font-mono:      "IBM Plex Mono", Consolas, monospace;
+      --sidebar-w:      260px;
+      --panel-w:        280px;
+    }
+
+    /* ── Light Mode ─────────────────────────────────── */
+    body.light {
+      --bg-base:        #F0F4F8;
+      --bg-surface:     #FFFFFF;
+      --bg-elevated:    #E8EFF5;
+      --bg-card:        rgba(0,0,0,0.03);
+      --bg-card-hover:  rgba(0,0,0,0.06);
+      --bg-glass:       rgba(255,255,255,0.85);
+      --border:         rgba(0,0,0,0.08);
+      --border-strong:  rgba(0,0,0,0.14);
+      --text-primary:   #1A2C42;
+      --text-secondary: #4A6278;
+      --text-muted:     #8FA3B8;
+      --text-accent:    #1A73E8;
+      --accent-dim:     rgba(66,133,244,0.1);
+    }
+
+    /* ── Reset ──────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.6;
+      transition: background var(--transition), color var(--transition);
+    }
+    button { font-family: inherit; cursor: pointer; border: none; outline: none; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    textarea { font-family: inherit; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
+
+    /* ══════════════════════════════════════════════════════
+       SHELL
+    ══════════════════════════════════════════════════════ */
+    .app { display: flex; height: 100vh; overflow: hidden; position: relative; }
+
+    /* ══════════════════════════════════════════════════════
+       SIDEBAR
+    ══════════════════════════════════════════════════════ */
+    .sidebar {
+      width: var(--sidebar-w); min-width: var(--sidebar-w);
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      transition: width var(--transition), min-width var(--transition);
+      z-index: 20;
+    }
+    .sidebar.collapsed { width: 0; min-width: 0; }
+
+    /* Brand header */
+    .brand {
+      padding: 18px 16px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 11px;
+      flex-shrink: 0;
+    }
+    .brand-logo {
+      width: 36px; height: 36px; border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #4285F4 0%, #1A73E8 50%, #1557B0 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+      box-shadow: 0 0 16px rgba(66,133,244,0.4);
+    }
+    .brand-text { min-width: 0; }
+    .brand-name { font-family: var(--font-head); font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: 0.02em; }
+    .brand-sub  { font-size: 10px; color: var(--text-muted); margin-top: 1px; letter-spacing: 0.03em; }
+
+    /* New chat */
+    .new-chat-btn {
+      margin: 12px 12px 4px;
+      padding: 9px 14px;
+      border-radius: var(--radius-md);
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+      box-shadow: var(--shadow-accent);
+      letter-spacing: 0.01em;
+    }
+    .new-chat-btn:hover { background: var(--accent-bright); transform: translateY(-1px); box-shadow: 0 6px 24px rgba(66,133,244,0.4); }
+    .new-chat-btn:active { transform: translateY(0); }
+    .new-chat-btn svg { width: 14px; height: 14px; }
+
+    /* Sidebar search */
+    .sidebar-search {
+      margin: 8px 12px;
+      padding: 7px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; gap: 8px;
+      transition: border-color var(--transition);
+    }
+    .sidebar-search:focus-within { border-color: var(--accent); }
+    .sidebar-search input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text-primary); font-size: 12px;
+    }
+    .sidebar-search input::placeholder { color: var(--text-muted); }
+    .sidebar-search svg { color: var(--text-muted); flex-shrink: 0; }
+
+    /* Section label */
+    .sidebar-section { padding: 14px 12px 6px; flex-shrink: 0; }
+    .section-label {
+      font-size: 10px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.12em;
+      padding: 0 4px 8px;
+    }
+
+    /* Focus mode buttons */
+    .mode-btn {
+      width: 100%; display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px; border-radius: var(--radius-sm);
+      background: transparent; color: var(--text-secondary);
+      font-size: 12.5px; text-align: left;
+      transition: background var(--transition), color var(--transition), transform 0.15s;
+      margin-bottom: 1px; position: relative; overflow: hidden;
+    }
+    .mode-btn::before {
+      content: ''; position: absolute; inset: 0;
+      background: var(--accent); opacity: 0;
+      transition: opacity var(--transition);
+      border-radius: var(--radius-sm);
+    }
+    .mode-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); transform: translateX(2px); }
+    .mode-btn.active {
+      background: var(--accent-dim);
+      color: var(--text-accent);
+      font-weight: 600;
+      border-left: 2px solid var(--accent);
+      padding-left: 8px;
+    }
+    .mode-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+    .mode-badge {
+      margin-left: auto; font-size: 9px; padding: 2px 6px; border-radius: 99px;
+      background: var(--accent-dim); color: var(--accent); font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .sidebar-divider { height: 1px; background: var(--border); margin: 8px 12px; }
+
+    /* History list */
+    .history-scroll { flex: 1; overflow-y: auto; }
+    .history-group-label {
+      font-size: 10px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.1em;
+      padding: 8px 16px 4px;
+    }
+    .history-item {
+      padding: 9px 12px; margin: 1px 8px; border-radius: var(--radius-sm);
+      cursor: pointer; transition: background var(--transition);
+      position: relative;
+    }
+    .history-item:hover { background: var(--bg-card-hover); }
+    .history-item:hover .history-actions { opacity: 1; }
+    .history-title {
+      font-size: 12px; color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-weight: 500;
+    }
+    .history-meta {
+      font-size: 10px; color: var(--text-muted); margin-top: 2px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .history-tag {
+      font-size: 9px; padding: 1px 5px; border-radius: 99px;
+      background: var(--accent-dim); color: var(--accent); font-weight: 600;
+    }
+    .history-actions {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      display: flex; gap: 3px; opacity: 0; transition: opacity 0.2s;
+    }
+    .history-action-btn {
+      width: 22px; height: 22px; border-radius: 4px;
+      background: var(--bg-elevated); color: var(--text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      transition: background var(--transition), color var(--transition);
+    }
+    .history-action-btn:hover { background: var(--accent-dim); color: var(--accent); }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 12px 14px; border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 9px; flex-shrink: 0;
+    }
+    .status-indicator {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: var(--text-muted);
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 6px rgba(52,168,83,0.7);
+      animation: pulse-green 2s infinite;
+    }
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: 0 0 6px rgba(52,168,83,0.7); }
+      50%       { box-shadow: 0 0 12px rgba(52,168,83,0.5); }
+    }
+    .sidebar-footer-actions { margin-left: auto; display: flex; gap: 4px; }
+    .icon-btn {
+      width: 28px; height: 28px; border-radius: var(--radius-sm);
+      background: transparent; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--transition), color var(--transition);
+      font-size: 14px;
+    }
+    .icon-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+
+    /* ══════════════════════════════════════════════════════
+       MAIN AREA
+    ══════════════════════════════════════════════════════ */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+    /* ── Topbar ──────────────────────────────────────── */
+    .topbar {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-surface);
+      display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0; z-index: 10;
+    }
+    .topbar-toggle {
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      background: transparent; color: var(--text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--transition); flex-shrink: 0;
+    }
+    .topbar-toggle:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .topbar-center { flex: 1; min-width: 0; }
+    .topbar-title {
+      font-family: var(--font-head); font-size: 15px; font-weight: 700;
+      color: var(--text-primary); letter-spacing: 0.01em;
+    }
+    .topbar-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    .model-badge {
+      padding: 4px 10px; border-radius: 99px;
+      background: var(--accent-dim); color: var(--accent);
+      border: 1px solid rgba(66,133,244,0.25);
+      font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+      font-family: var(--font-mono);
+    }
+    .topbar-btn {
+      padding: 6px 14px; border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-secondary); font-size: 12px; font-weight: 500;
+      transition: all var(--transition);
+    }
+    .topbar-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    /* Theme toggle */
+    .theme-toggle {
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-secondary); font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+    }
+    .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Panel toggle */
+    .panel-toggle-btn {
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-secondary); font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition);
+    }
+    .panel-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .panel-toggle-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+    /* ── Chat container ──────────────────────────────── */
+    .chat-area { flex: 1; display: flex; overflow: hidden; }
+    .chat-container {
+      flex: 1; overflow-y: auto; padding: 28px 24px;
+      scroll-behavior: smooth; min-width: 0;
+    }
+
+    /* ── Welcome screen ──────────────────────────────── */
+    .welcome {
+      max-width: 720px; margin: 20px auto; text-align: center;
+      animation: fadeUp 0.4s ease-out;
+    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+    .welcome-hero {
+      margin-bottom: 28px;
+    }
+    .welcome-logo {
+      width: 72px; height: 72px; border-radius: 20px; margin: 0 auto 20px;
+      background: linear-gradient(135deg, #1A73E8, #4285F4, #6BA3FF);
+      display: flex; align-items: center; justify-content: center; font-size: 36px;
+      box-shadow: 0 0 40px rgba(66,133,244,0.35);
+      position: relative;
+    }
+    .welcome-logo::after {
+      content: '';
+      position: absolute; inset: -3px; border-radius: 23px;
+      border: 1px solid rgba(66,133,244,0.3);
+    }
+    .welcome-title {
+      font-family: var(--font-head); font-size: 30px; font-weight: 700;
+      color: var(--text-primary); margin-bottom: 10px; letter-spacing: -0.02em;
+    }
+    .welcome-title span { color: var(--accent-bright); }
+    .welcome-sub {
+      font-size: 14px; color: var(--text-secondary); line-height: 1.7; max-width: 500px; margin: 0 auto;
+    }
+
+    /* Focus mode cards on welcome */
+    .mode-cards-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      margin: 28px 0; text-align: left;
+    }
+    .mode-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition),
+                  transform var(--transition), box-shadow var(--transition);
+      position: relative; overflow: hidden;
+    }
+    .mode-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--accent); opacity: 0; transition: opacity var(--transition);
+    }
+    .mode-card:hover {
+      border-color: var(--border-strong); background: var(--bg-card-hover);
+      transform: translateY(-3px); box-shadow: var(--shadow-md);
+    }
+    .mode-card:hover::before { opacity: 1; }
+    .mode-card.active-card {
+      border-color: var(--accent); background: var(--accent-dim);
+      box-shadow: 0 0 0 1px var(--accent), var(--shadow-accent);
+    }
+    .mode-card.active-card::before { opacity: 1; }
+    .mode-card-icon { font-size: 22px; margin-bottom: 9px; }
+    .mode-card-title { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .mode-card-desc  { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+    .mode-card-hint  { font-size: 10px; color: var(--accent); margin-top: 8px; font-weight: 500; }
+
+    /* Prompt carousel */
+    .prompts-section { margin-top: 4px; }
+    .prompts-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .prompts-label {
+      font-size: 11px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .prompts-scroll {
+      display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;
+    }
+    .prompts-scroll::-webkit-scrollbar { height: 3px; }
+    .prompt-chip {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 10px 14px;
+      font-size: 12px; color: var(--text-secondary);
+      white-space: nowrap; cursor: pointer; flex-shrink: 0;
+      transition: all var(--transition); max-width: 260px;
+      white-space: normal; text-align: left;
+      position: relative;
+    }
+    .prompt-chip:hover {
+      border-color: var(--accent); color: var(--text-primary);
+      background: var(--accent-dim); transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+    }
+    .prompt-badge {
+      display: inline-block; font-size: 9px; font-weight: 700;
+      padding: 1px 5px; border-radius: 99px; margin-bottom: 4px;
+      letter-spacing: 0.05em;
+    }
+    .prompt-badge.popular { background: rgba(52,168,83,0.15); color: var(--success); }
+    .prompt-badge.trending { background: rgba(251,188,4,0.15); color: var(--warning); }
+
+    /* ── Messages ────────────────────────────────────── */
+    .msg-group { max-width: 860px; margin: 0 auto 24px; animation: fadeUp 0.2s ease-out; }
+
+    .msg { display: flex; gap: 13px; }
+
+    .msg-avatar {
+      width: 34px; height: 34px; border-radius: var(--radius-md); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; margin-top: 2px;
+    }
+    .msg-avatar.user-av {
+      background: linear-gradient(135deg, #2A4A7A, #4285F4);
+      box-shadow: 0 0 10px rgba(66,133,244,0.25);
+    }
+    .msg-avatar.bot-av {
+      background: linear-gradient(135deg, #1A73E8, #6BA3FF);
+      box-shadow: 0 0 10px rgba(66,133,244,0.3);
+    }
+
+    .msg-body { flex: 1; min-width: 0; }
+    .msg-header {
+      display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px;
+    }
+    .msg-author {
+      font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .msg-author.user-name { color: var(--accent-bright); }
+    .msg-author.bot-name  { color: #6BA3FF; }
+    .msg-time-label { font-size: 10px; color: var(--text-muted); }
+
+    .msg-bubble {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 2px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+      padding: 14px 18px;
+      font-size: 14px; line-height: 1.75; color: var(--text-primary);
+      word-wrap: break-word;
+    }
+    .msg.user-msg .msg-bubble {
+      background: linear-gradient(135deg, rgba(26,115,232,0.15), rgba(66,133,244,0.1));
+      border-color: rgba(66,133,244,0.25);
+      border-radius: var(--radius-lg) 2px var(--radius-lg) var(--radius-lg);
+    }
+
+    /* Markdown in bubble */
+    .msg-bubble p { margin-bottom: 8px; }
+    .msg-bubble p:last-child { margin-bottom: 0; }
+    .msg-bubble h1, .msg-bubble h2, .msg-bubble h3 {
+      font-family: var(--font-head); color: var(--text-primary);
+      margin: 14px 0 7px; font-size: 15px;
+    }
+    .msg-bubble strong { color: var(--text-primary); font-weight: 600; }
+    .msg-bubble ul, .msg-bubble ol { padding-left: 20px; margin: 6px 0; }
+    .msg-bubble li { margin-bottom: 5px; }
+    .msg-bubble code {
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border-strong);
+      border-radius: 4px; padding: 1px 6px;
+      font-size: 12px; font-family: var(--font-mono); color: var(--accent-bright);
+    }
+    .msg-bubble pre {
+      background: rgba(0,0,0,0.4); border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md); padding: 14px; overflow-x: auto; margin: 10px 0;
+    }
+    .msg-bubble pre code { background: none; border: none; padding: 0; }
+    .msg-bubble blockquote {
+      border-left: 3px solid var(--accent); padding-left: 12px;
+      color: var(--text-secondary); margin: 8px 0; font-style: italic;
+    }
+
+    /* Message actions */
+    .msg-actions {
+      display: flex; gap: 4px; margin-top: 8px; opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .msg-group:hover .msg-actions { opacity: 1; }
+    .msg-action-btn {
+      padding: 4px 10px; border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-muted); font-size: 11px; font-weight: 500;
+      display: flex; align-items: center; gap: 5px;
+      transition: all var(--transition);
+    }
+    .msg-action-btn:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .msg-action-btn.liked   { color: var(--success); border-color: var(--success); }
+    .msg-action-btn.disliked{ color: var(--danger);  border-color: var(--danger); }
+
+    /* ── Typing indicator ────────────────────────────── */
+    .typing-bubble {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 2px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+      padding: 14px 20px; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .typing-label { font-size: 12px; color: var(--text-muted); font-style: italic; margin-left: 4px; }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+      animation: bounce 1.3s ease-in-out infinite;
+      opacity: 0.7;
+    }
+    .dot:nth-child(2) { animation-delay: 0.18s; }
+    .dot:nth-child(3) { animation-delay: 0.36s; }
+    @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-7px); opacity: 1; } }
+
+    /* Skeleton loading */
+    .skeleton { background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius-sm); }
+    @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+    /* ══════════════════════════════════════════════════════
+       RIGHT PANEL
+    ══════════════════════════════════════════════════════ */
+    .right-panel {
+      width: var(--panel-w); min-width: var(--panel-w);
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      transition: width var(--transition), min-width var(--transition), opacity var(--transition);
+    }
+    .right-panel.hidden { width: 0; min-width: 0; opacity: 0; }
+
+    .panel-header {
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      font-family: var(--font-head); font-size: 13px; font-weight: 700;
+      color: var(--text-primary); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-section { padding: 14px 14px 0; flex-shrink: 0; }
+    .panel-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+
+    /* Metric widgets */
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .metric-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 11px 12px;
+      transition: border-color var(--transition);
+    }
+    .metric-card:hover { border-color: var(--border-strong); }
+    .metric-value { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+    .metric-label { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+    .metric-trend { font-size: 10px; margin-top: 4px; font-weight: 600; }
+    .metric-trend.up { color: var(--success); }
+    .metric-trend.dn { color: var(--danger); }
+
+    /* Related topics */
+    .topic-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 99px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      font-size: 11px; color: var(--text-secondary);
+      cursor: pointer; margin: 0 5px 6px 0;
+      transition: all var(--transition);
+    }
+    .topic-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    /* Templates */
+    .template-item {
+      padding: 10px 12px; border-radius: var(--radius-md);
+      background: var(--bg-card); border: 1px solid var(--border);
+      margin-bottom: 7px; cursor: pointer;
+      transition: all var(--transition);
+    }
+    .template-item:hover { border-color: var(--accent); background: var(--accent-dim); transform: translateX(3px); }
+    .template-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+    .template-desc  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .panel-scroll { flex: 1; overflow-y: auto; padding-bottom: 16px; }
+
+    /* ══════════════════════════════════════════════════════
+       INPUT AREA
+    ══════════════════════════════════════════════════════ */
+    .input-zone {
+      padding: 14px 20px 18px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+      flex-shrink: 0;
+    }
+
+    /* Suggested prompts above input */
+    .input-suggestions {
+      display: flex; gap: 7px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 2px;
+    }
+    .input-suggestions::-webkit-scrollbar { height: 2px; }
+    .input-suggestion-chip {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 99px; padding: 4px 11px;
+      font-size: 11px; color: var(--text-secondary); white-space: nowrap;
+      cursor: pointer; flex-shrink: 0;
+      transition: all var(--transition);
+    }
+    .input-suggestion-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+    .input-box {
+      max-width: 860px; margin: 0 auto;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .input-box:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+    .input-main {
+      display: flex; align-items: flex-end; padding: 4px 6px 6px 16px; gap: 8px;
+    }
+    #userInput {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text-primary); font-size: 14px; line-height: 1.6;
+      resize: none; padding: 10px 0; min-height: 44px; max-height: 180px;
+      font-family: var(--font-body);
+    }
+    #userInput::placeholder { color: var(--text-muted); }
+
+    .input-actions { display: flex; gap: 5px; align-items: center; }
+    .input-icon-btn {
+      width: 32px; height: 32px; border-radius: var(--radius-sm);
+      background: transparent; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; transition: all var(--transition);
+      flex-shrink: 0;
+    }
+    .input-icon-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+
+    .send-btn {
+      width: 38px; height: 38px; border-radius: var(--radius-md);
+      background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      box-shadow: var(--shadow-accent);
+    }
+    .send-btn:hover { background: var(--accent-bright); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(66,133,244,0.4); }
+    .send-btn:active { transform: scale(0.95); }
+    .send-btn:disabled { background: var(--bg-card); box-shadow: none; cursor: not-allowed; color: var(--text-muted); }
+
+    .input-footer-bar {
+      max-width: 860px; margin: 8px auto 0;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0 2px;
+    }
+    .char-counter { font-size: 11px; color: var(--text-muted); }
+    .char-counter.warn { color: var(--warning); }
+    .input-hint-text { font-size: 11px; color: var(--text-muted); }
+
+    /* ══════════════════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════════════════ */
+    .toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px; z-index: 999;
+    }
+    .toast {
+      padding: 11px 18px; border-radius: var(--radius-md);
+      font-size: 13px; font-weight: 500; max-width: 360px;
+      display: flex; align-items: center; gap: 10px;
+      opacity: 0; transform: translateY(10px);
+      transition: opacity 0.3s, transform 0.3s;
+      box-shadow: var(--shadow-lg);
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.info    { background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text-primary); }
+    .toast.success { background: rgba(52,168,83,0.15); border: 1px solid rgba(52,168,83,0.3); color: var(--success); }
+    .toast.error   { background: rgba(234,67,53,0.15); border: 1px solid rgba(234,67,53,0.3); color: #FF7B72; }
+
+    /* ══════════════════════════════════════════════════════
+       KEYBOARD SHORTCUTS MODAL
+    ══════════════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px); z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--bg-surface); border: 1px solid var(--border-strong);
+      border-radius: var(--radius-xl); padding: 28px; width: 440px; max-width: 95vw;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.95); transition: transform 0.25s;
+    }
+    .modal-overlay.open .modal { transform: scale(1); }
+    .modal-title {
+      font-family: var(--font-head); font-size: 17px; font-weight: 700;
+      color: var(--text-primary); margin-bottom: 18px;
+    }
+    .shortcut-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .shortcut-row:last-child { border-bottom: none; }
+    .shortcut-desc { font-size: 13px; color: var(--text-secondary); }
+    .shortcut-keys { display: flex; gap: 4px; }
+    .kbd {
+      padding: 2px 7px; border-radius: 4px;
+      background: var(--bg-elevated); border: 1px solid var(--border-strong);
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-primary);
+    }
+    .modal-close {
+      width: 100%; margin-top: 18px; padding: 10px;
+      border-radius: var(--radius-md); background: var(--accent);
+      color: #fff; font-size: 13px; font-weight: 600;
+      transition: background var(--transition);
+    }
+    .modal-close:hover { background: var(--accent-bright); }
+
+    /* ══════════════════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════════════════ */
+    @media (max-width: 1100px) {
+      .right-panel { display: none; }
+    }
+    @media (max-width: 720px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { display: none; }
+      .mode-cards-grid { grid-template-columns: 1fr 1fr; }
+      .chat-container { padding: 16px; }
+      .input-zone { padding: 10px 12px 14px; }
+    }
+    @media (max-width: 480px) {
+      .mode-cards-grid { grid-template-columns: 1fr; }
+      .topbar { padding: 10px 14px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ══════════════════════════════ SIDEBAR ════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">🤖</div>
+      <div class="brand-text">
+        <div class="brand-name">Business Agent</div>
+        <div class="brand-sub">IBM watsonx · Granite-4</div>
+      </div>
+    </div>
+
+    <button class="new-chat-btn" onclick="newChat()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      New Conversation
+    </button>
+
+    <div class="sidebar-search">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg>
+      <input type="text" placeholder="Search conversations…" id="historySearch" oninput="filterHistory(this.value)" />
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Focus Mode</div>
+      <button class="mode-btn active" data-mode="general"    onclick="setMode(this)"><span class="mode-icon">💼</span> General Business</button>
+      <button class="mode-btn"        data-mode="strategy"   onclick="setMode(this)"><span class="mode-icon">🎯</span> Strategy<span class="mode-badge">HOT</span></button>
+      <button class="mode-btn"        data-mode="finance"    onclick="setMode(this)"><span class="mode-icon">💰</span> Finance</button>
+      <button class="mode-btn"        data-mode="sales"      onclick="setMode(this)"><span class="mode-icon">📈</span> Sales &amp; Marketing</button>
+      <button class="mode-btn"        data-mode="operations" onclick="setMode(this)"><span class="mode-icon">⚙️</span> Operations</button>
+      <button class="mode-btn"        data-mode="hr"         onclick="setMode(this)"><span class="mode-icon">👥</span> HR &amp; People</button>
+      <button class="mode-btn"        data-mode="legal"      onclick="setMode(this)"><span class="mode-icon">🔒</span> Legal &amp; Compliance</button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section" style="padding-bottom:4px;">
+      <div class="section-label">Recent Conversations</div>
+    </div>
+    <div class="history-scroll" id="historyList">
+      <div class="history-group-label">Today</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="status-indicator">
+        <div class="status-dot"></div>
+        Connected
+      </div>
+      <div class="sidebar-footer-actions">
+        <button class="icon-btn" title="Keyboard shortcuts (⌘K)" onclick="toggleShortcuts()">⌨</button>
+        <button class="icon-btn theme-toggle" title="Toggle theme" onclick="toggleTheme()" id="themeBtn">🌙</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════ MAIN ════════════════════════════════ -->
+  <div class="main">
+
+    <!-- Top Bar -->
+    <div class="topbar">
+      <button class="topbar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+          <line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/>
+        </svg>
+      </button>
+      <div class="topbar-center">
+        <div class="topbar-title">Smart Business Agent</div>
+        <div class="topbar-meta" id="modeLabel">Mode: General Business · Ready</div>
+      </div>
+      <div class="topbar-right">
+        <span class="model-badge" id="modelBadge">ibm/granite-4-h-small</span>
+        <button class="topbar-btn" onclick="exportChat()" title="Export conversation">↓ Export</button>
+        <button class="topbar-btn" onclick="newChat()">Clear</button>
+        <button class="panel-toggle-btn active" id="panelToggleBtn" onclick="togglePanel()" title="Toggle insights panel">⊞</button>
+      </div>
+    </div>
+
+    <!-- Chat + Panel -->
+    <div class="chat-area">
+      <div class="chat-container" id="chatContainer"></div>
+
+      <!-- ══════════ RIGHT PANEL ══════════ -->
+      <aside class="right-panel" id="rightPanel">
+        <div class="panel-header">
+          <span>💡 Insights &amp; Tools</span>
+        </div>
+        <div class="panel-scroll">
+          <!-- Metrics -->
+          <div class="panel-section">
+            <div class="panel-label">Business Snapshot</div>
+            <div class="metric-grid">
+              <div class="metric-card">
+                <div class="metric-value">$2.4M</div>
+                <div class="metric-label">Est. ARR</div>
+                <div class="metric-trend up">↑ 12%</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">94%</div>
+                <div class="metric-label">NRR</div>
+                <div class="metric-trend dn">↓ 2%</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">18mo</div>
+                <div class="metric-label">Runway</div>
+                <div class="metric-trend up">↑ Stable</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">3.2x</div>
+                <div class="metric-label">LTV:CAC</div>
+                <div class="metric-trend up">↑ Good</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sidebar-divider"></div>
+
+          <!-- Related topics -->
+          <div class="panel-section" style="margin-top:12px;">
+            <div class="panel-label">Related Topics</div>
+            <div id="relatedTopics" style="padding-bottom:6px;">
+              <span class="topic-chip" onclick="useTopic(this)">📊 OKR Framework</span>
+              <span class="topic-chip" onclick="useTopic(this)">💹 Unit Economics</span>
+              <span class="topic-chip" onclick="useTopic(this)">🚀 PLG Strategy</span>
+              <span class="topic-chip" onclick="useTopic(this)">🎯 TAM Analysis</span>
+              <span class="topic-chip" onclick="useTopic(this)">📧 Outbound Sales</span>
+              <span class="topic-chip" onclick="useTopic(this)">🔄 Churn Reduction</span>
+            </div>
+          </div>
+
+          <div class="sidebar-divider"></div>
+
+          <!-- Templates -->
+          <div class="panel-section" style="margin-top:12px;">
+            <div class="panel-label">Quick Templates</div>
+            <div class="template-item" onclick="useTemplate('Write a SWOT analysis for my business')">
+              <div class="template-title">SWOT Analysis</div>
+              <div class="template-desc">Strengths, weaknesses, opportunities, threats</div>
+            </div>
+            <div class="template-item" onclick="useTemplate('Create a financial model projection for 3 years')">
+              <div class="template-title">3-Year Financial Model</div>
+              <div class="template-desc">Revenue, costs, EBITDA projections</div>
+            </div>
+            <div class="template-item" onclick="useTemplate('Draft a go-to-market strategy for a new product')">
+              <div class="template-title">Go-to-Market Plan</div>
+              <div class="template-desc">Positioning, channels, launch timeline</div>
+            </div>
+            <div class="template-item" onclick="useTemplate('Build a KPI dashboard framework for my team')">
+              <div class="template-title">KPI Dashboard</div>
+              <div class="template-desc">Define and track key performance indicators</div>
+            </div>
+          </div>
+
+          <div class="sidebar-divider"></div>
+
+          <!-- Export options -->
+          <div class="panel-section" style="margin-top:12px; padding-bottom:16px;">
+            <div class="panel-label">Export</div>
+            <div class="template-item" onclick="exportChat('txt')">
+              <div class="template-title">📄 Export as Text</div>
+              <div class="template-desc">Plain text transcript</div>
+            </div>
+            <div class="template-item" onclick="exportChat('json')">
+              <div class="template-title">📦 Export as JSON</div>
+              <div class="template-desc">Structured conversation data</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Input Zone -->
+    <div class="input-zone">
+      <div id="inputSuggestions" class="input-suggestions"></div>
+      <div class="input-box" style="max-width:860px; margin:0 auto;">
+        <div class="input-main">
+          <textarea id="userInput" rows="1" placeholder="Ask anything about your business…" maxlength="4000"></textarea>
+          <div class="input-actions">
+            <button class="input-icon-btn" title="Attach file (coming soon)" onclick="showToast('File attachment coming soon','info')">📎</button>
+            <button class="input-icon-btn" title="Voice input (coming soon)" onclick="showToast('Voice input coming soon','info')">🎙</button>
+            <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send (Enter)">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 1.5L14.5 8L1.5 14.5V9.5L10.5 8L1.5 6.5V1.5Z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="input-footer-bar">
+        <span class="char-counter" id="charCount">0 / 4000</span>
+        <span class="input-hint-text">Enter to send · Shift+Enter new line · ⌘K shortcuts</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Keyboard shortcuts modal -->
+<div class="modal-overlay" id="shortcutsModal" onclick="closeShortcutsOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-title">⌨ Keyboard Shortcuts</div>
+    <div class="shortcut-row"><span class="shortcut-desc">Send message</span><span class="shortcut-keys"><kbd class="kbd">Enter</kbd></span></div>
+    <div class="shortcut-row"><span class="shortcut-desc">New line in message</span><span class="shortcut-keys"><kbd class="kbd">Shift</kbd><kbd class="kbd">Enter</kbd></span></div>
+    <div class="shortcut-row"><span class="shortcut-desc">New conversation</span><span class="shortcut-keys"><kbd class="kbd">⌘</kbd><kbd class="kbd">N</kbd></span></div>
+    <div class="shortcut-row"><span class="shortcut-desc">Toggle sidebar</span><span class="shortcut-keys"><kbd class="kbd">⌘</kbd><kbd class="kbd">B</kbd></span></div>
+    <div class="shortcut-row"><span class="shortcut-desc">Toggle insights panel</span><span class="shortcut-keys"><kbd class="kbd">⌘</kbd><kbd class="kbd">I</kbd></span></div>
+    <div class="shortcut-row"><span class="shortcut-desc">Toggle theme</span><span class="shortcut-keys"><kbd class="kbd">⌘</kbd><kbd class="kbd">D</kbd></span></div>
+    <div class="shortcut-row"><span class="shortcut-desc">Show shortcuts</span><span class="shortcut-keys"><kbd class="kbd">⌘</kbd><kbd class="kbd">K</kbd></span></div>
+    <div class="shortcut-row"><span class="shortcut-desc">Focus input</span><span class="shortcut-keys"><kbd class="kbd">/</kbd></span></div>
+    <button class="modal-close" onclick="toggleShortcuts()">Close</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+let messages     = [];
+let currentMode  = "general";
+let isLoading    = false;
+let suggestions  = [];
+let sidebarOpen  = true;
+let panelOpen    = true;
+let isDark       = true;
+
+const MODE_META = {
+  general:    { label: "General Business", icon: "💼", desc: "Strategy, operations, growth", hint: "Ask about any business topic", example: "How do I build a scalable business model?" },
+  strategy:   { label: "Strategy & Planning", icon: "🎯", desc: "OKRs, roadmaps, competitive analysis", hint: "Ask about long-term growth", example: "Build a 3-year strategic roadmap for a SaaS company" },
+  finance:    { label: "Finance & Accounting", icon: "💰", desc: "Budgets, forecasts, ROI", hint: "Ask about numbers and models", example: "Calculate break-even with $80k fixed costs, 45% margin" },
+  sales:      { label: "Sales & Marketing", icon: "📈", desc: "Funnels, campaigns, pricing", hint: "Ask about revenue growth", example: "Write a cold email sequence for enterprise B2B" },
+  operations: { label: "Operations", icon: "⚙️", desc: "KPIs, process optimization", hint: "Ask about efficiency", example: "Design a supply chain optimization plan" },
+  hr:         { label: "HR & People", icon: "👥", desc: "Hiring, culture, performance", hint: "Ask about your team", example: "Draft a 90-day onboarding plan for senior hires" },
+  legal:      { label: "Legal & Compliance", icon: "🔒", desc: "Contracts, risk, regulations", hint: "Ask about compliance", example: "What clauses should I include in a SaaS MSA?" },
+};
+
+const QUICK_PROMPTS = [
+  { text: "Create a 90-day GTM strategy for a SaaS startup", badge: "popular" },
+  { text: "Break-even analysis: $50k fixed costs, 40% gross margin", badge: "popular" },
+  { text: "Write a 3-step B2B cold email sequence", badge: "trending" },
+  { text: "What KPIs should I track for e-commerce?", badge: null },
+  { text: "Build an OKR framework for a 20-person team", badge: "trending" },
+  { text: "Suggest cost reduction without affecting quality", badge: null },
+  { text: "How should I price my consulting services?", badge: null },
+  { text: "Draft a performance review template for sales", badge: "popular" },
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════════ */
+async function init() {
+  showWelcome();
+  renderInputSuggestions();
+  autoResize();
+  bindKeyboard();
+  await loadSuggestions();
+}
+
+async function loadSuggestions() {
+  try {
+    const r = await fetch("/api/suggestions");
+    const d = await r.json();
+    suggestions = d.suggestions || [];
+  } catch (_) {}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WELCOME SCREEN
+═══════════════════════════════════════════════════════════════ */
+function showWelcome() {
+  const container = document.getElementById("chatContainer");
+
+  const cards = Object.entries(MODE_META).map(([key, m]) =>
+    `<div class="mode-card ${key === currentMode ? 'active-card' : ''}" onclick="setModeByKey('${key}')">
+      <div class="mode-card-icon">${m.icon}</div>
+      <div class="mode-card-title">${m.label}</div>
+      <div class="mode-card-desc">${m.desc}</div>
+      <div class="mode-card-hint">${m.hint} →</div>
+    </div>`
+  ).join("");
+
+  const prompts = QUICK_PROMPTS.map(p =>
+    `<div class="prompt-chip" onclick="usePrompt(this)">
+      ${p.badge ? `<div class="prompt-badge ${p.badge}">${p.badge.toUpperCase()}</div>` : ""}
+      ${escHtml(p.text)}
+    </div>`
+  ).join("");
+
+  container.innerHTML = `
+    <div class="welcome">
+      <div class="welcome-hero">
+        <div class="welcome-logo">🤖</div>
+        <div class="welcome-title">Smart <span>Business</span> Agent</div>
+        <div class="welcome-sub">Powered by IBM watsonx AI &amp; Granite — your intelligent advisor for strategy, finance, operations, and more.</div>
+      </div>
+      <div class="mode-cards-grid">${cards}</div>
+      <div class="prompts-section">
+        <div class="prompts-header">
+          <span class="prompts-label">Try asking…</span>
+        </div>
+        <div class="prompts-scroll" id="promptsScroll">${prompts}</div>
+      </div>
+    </div>`;
+}
+
+function renderInputSuggestions() {
+  const el = document.getElementById("inputSuggestions");
+  const short = [
+    "SWOT analysis", "Pricing strategy", "OKR template", "Cold email", "Financial forecast", "Hiring plan"
+  ];
+  el.innerHTML = short.map(s =>
+    `<button class="input-suggestion-chip" onclick="useShortSuggestion('${s}')">${s}</button>`
+  ).join("");
+}
+
+function usePrompt(el) {
+  const text = el.textContent.replace(/(POPULAR|TRENDING)/gi,'').trim();
+  document.getElementById("userInput").value = text;
+  updateCharCount();
+  sendMessage();
+}
+function useShortSuggestion(text) {
+  document.getElementById("userInput").value = text;
+  updateCharCount();
+  document.getElementById("userInput").focus();
+}
+function useTopic(el) {
+  const text = "Tell me more about: " + el.textContent.trim();
+  document.getElementById("userInput").value = text;
+  document.getElementById("userInput").focus();
+  updateCharCount();
+}
+function useTemplate(text) {
+  document.getElementById("userInput").value = text;
+  updateCharCount();
+  document.getElementById("userInput").focus();
+  showToast("Template loaded — press Enter to send", "info");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODE
+═══════════════════════════════════════════════════════════════ */
+function setMode(btn) {
+  document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  currentMode = btn.dataset.mode;
+  updateModeLabel();
+}
+function setModeByKey(key) {
+  currentMode = key;
+  document.querySelectorAll(".mode-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.mode === key);
+  });
+  updateModeLabel();
+  showToast(`Switched to ${MODE_META[key].label} mode`, "success");
+}
+function updateModeLabel() {
+  const m = MODE_META[currentMode];
+  document.getElementById("modeLabel").textContent = `Mode: ${m.label} · Ready`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HISTORY
+═══════════════════════════════════════════════════════════════ */
+function addHistory(text, tag) {
+  const list   = document.getElementById("historyList");
+  const el     = document.createElement("div");
+  el.className = "history-item";
+  const tagHtml = tag ? `<span class="history-tag">#${tag}</span>` : "";
+  const now = new Date().toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  el.innerHTML = `
+    <div class="history-title">${escHtml(text)}</div>
+    <div class="history-meta">${tagHtml} <span>${now}</span></div>
+    <div class="history-actions">
+      <button class="history-action-btn" title="Pin" onclick="event.stopPropagation(); showToast('Conversation pinned','success')">📌</button>
+      <button class="history-action-btn" title="Delete" onclick="event.stopPropagation(); this.closest('.history-item').remove()">🗑</button>
+    </div>`;
+  // Insert after the "Today" label
+  const label = list.querySelector(".history-group-label");
+  if (label && label.nextSibling) {
+    list.insertBefore(el, label.nextSibling);
+  } else {
+    list.appendChild(el);
+  }
+  while (list.querySelectorAll(".history-item").length > 12) {
+    list.removeChild(list.lastElementChild);
+  }
+}
+
+function filterHistory(query) {
+  document.querySelectorAll(".history-item").forEach(el => {
+    const title = el.querySelector(".history-title")?.textContent || "";
+    el.style.display = title.toLowerCase().includes(query.toLowerCase()) ? "" : "none";
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NEW CHAT
+═══════════════════════════════════════════════════════════════ */
+function newChat() {
+  if (messages.length > 0) {
+    const preview = messages[0]?.content?.slice(0, 48) || "Conversation";
+    addHistory(preview + "…", currentMode);
+  }
+  messages = [];
+  showWelcome();
+  const inp = document.getElementById("userInput");
+  inp.value = "";
+  inp.style.height = "auto";
+  updateCharCount();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SEND MESSAGE
+═══════════════════════════════════════════════════════════════ */
+async function sendMessage() {
+  const input = document.getElementById("userInput");
+  const text  = input.value.trim();
+  if (!text || isLoading) return;
+
+  if (messages.length === 0) {
+    document.getElementById("chatContainer").innerHTML = "";
+  }
+
+  messages.push({ role: "user", content: text });
+  appendMessage("user", text);
+  input.value = "";
+  input.style.height = "auto";
+  updateCharCount();
+  setLoading(true);
+  showTyping();
+
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages, mode: currentMode }),
+    });
+    const data = await resp.json();
+    removeTyping();
+
+    if (!resp.ok) {
+      showToast(data.error || "Something went wrong — please retry.", "error");
+      messages.pop();
+      setLoading(false);
+      return;
+    }
+
+    messages.push({ role: "assistant", content: data.reply });
+    appendMessage("bot", data.reply);
+
+    if (data.model) document.getElementById("modelBadge").textContent = data.model;
+  } catch (err) {
+    removeTyping();
+    showToast("Network error — check your connection.", "error");
+    messages.pop();
+  }
+  setLoading(false);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   APPEND MESSAGE
+═══════════════════════════════════════════════════════════════ */
+function appendMessage(role, content) {
+  const container = document.getElementById("chatContainer");
+  const isUser = role === "user";
+  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const id  = "msg-" + Date.now();
+
+  const div = document.createElement("div");
+  div.className = "msg-group";
+  div.id = id;
+  div.innerHTML = `
+    <div class="msg ${isUser ? 'user-msg' : 'bot-msg'}">
+      <div class="msg-avatar ${isUser ? 'user-av' : 'bot-av'}">${isUser ? "👤" : "🤖"}</div>
+      <div class="msg-body">
+        <div class="msg-header">
+          <span class="msg-author ${isUser ? 'user-name' : 'bot-name'}">${isUser ? "You" : "Business Agent"}</span>
+          <span class="msg-time-label">${now}</span>
+        </div>
+        <div class="msg-bubble" id="bubble-${id}">${isUser ? escHtml(content) : renderMarkdown(content)}</div>
+        ${!isUser ? `
+        <div class="msg-actions">
+          <button class="msg-action-btn" onclick="copyMsg('bubble-${id}', this)" title="Copy">📋 Copy</button>
+          <button class="msg-action-btn" onclick="likeMsg(this)"    title="Helpful">👍 Helpful</button>
+          <button class="msg-action-btn" onclick="dislikeMsg(this)" title="Not helpful">👎</button>
+          <button class="msg-action-btn" onclick="regenMsg('${id}')" title="Regenerate">↺ Regenerate</button>
+        </div>` : ""}
+      </div>
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function showTyping() {
+  const container = document.getElementById("chatContainer");
+  const el = document.createElement("div");
+  el.id = "typingIndicator";
+  el.className = "msg-group";
+  el.innerHTML = `
+    <div class="msg bot-msg">
+      <div class="msg-avatar bot-av">🤖</div>
+      <div class="msg-body">
+        <div class="msg-header">
+          <span class="msg-author bot-name">Business Agent</span>
+        </div>
+        <div class="typing-bubble">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+          <span class="typing-label">Thinking…</span>
+        </div>
+      </div>
+    </div>`;
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+function removeTyping() { document.getElementById("typingIndicator")?.remove(); }
+
+function setLoading(state) {
+  isLoading = state;
+  document.getElementById("sendBtn").disabled  = state;
+  document.getElementById("userInput").disabled = state;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MESSAGE ACTIONS
+═══════════════════════════════════════════════════════════════ */
+function copyMsg(bubbleId, btn) {
+  const text = document.getElementById(bubbleId)?.innerText || "";
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = "✓ Copied";
+    setTimeout(() => { btn.innerHTML = "📋 Copy"; }, 2000);
+    showToast("Copied to clipboard", "success");
+  });
+}
+function likeMsg(btn) {
+  btn.classList.toggle("liked");
+  btn.classList.remove("disliked");
+  showToast("Thanks for the feedback!", "success");
+}
+function dislikeMsg(btn) {
+  btn.classList.toggle("disliked");
+  btn.classList.remove("liked");
+}
+async function regenMsg(groupId) {
+  if (isLoading || messages.length < 2) return;
+  // Remove last assistant message from state and DOM
+  messages.pop();
+  document.getElementById(groupId)?.remove();
+  setLoading(true);
+  showTyping();
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages, mode: currentMode }),
+    });
+    const data = await resp.json();
+    removeTyping();
+    if (!resp.ok) { showToast(data.error || "Regeneration failed.", "error"); setLoading(false); return; }
+    messages.push({ role: "assistant", content: data.reply });
+    appendMessage("bot", data.reply);
+  } catch (e) {
+    removeTyping();
+    showToast("Regeneration failed — check connection.", "error");
+  }
+  setLoading(false);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EXPORT
+═══════════════════════════════════════════════════════════════ */
+function exportChat(format = "txt") {
+  if (messages.length === 0) { showToast("No conversation to export yet.", "info"); return; }
+  let content, type, ext;
+  if (format === "json") {
+    content = JSON.stringify({ mode: currentMode, model: document.getElementById("modelBadge").textContent, messages, exported: new Date().toISOString() }, null, 2);
+    type = "application/json"; ext = "json";
+  } else {
+    content = messages.map(m => `[${m.role.toUpperCase()}]\n${m.content}`).join("\n\n---\n\n");
+    type = "text/plain"; ext = "txt";
+  }
+  const blob = new Blob([content], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `business-agent-${Date.now()}.${ext}`;
+  a.click();
+  showToast(`Exported as .${ext}`, "success");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════════ */
+function showToast(msg, type = "info") {
+  const container = document.getElementById("toastContainer");
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  const icons = { info: "ℹ️", success: "✅", error: "❌" };
+  el.innerHTML = `<span>${icons[type] || "ℹ️"}</span><span>${msg}</span>`;
+  container.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  setTimeout(() => {
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 350);
+  }, 3200);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   UI TOGGLES
+═══════════════════════════════════════════════════════════════ */
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById("sidebar").classList.toggle("collapsed", !sidebarOpen);
+}
+function togglePanel() {
+  panelOpen = !panelOpen;
+  document.getElementById("rightPanel").classList.toggle("hidden", !panelOpen);
+  document.getElementById("panelToggleBtn").classList.toggle("active", panelOpen);
+}
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.classList.toggle("light", !isDark);
+  document.getElementById("themeBtn").textContent = isDark ? "🌙" : "☀️";
+  showToast(isDark ? "Dark mode on" : "Light mode on", "info");
+}
+function toggleShortcuts() {
+  document.getElementById("shortcutsModal").classList.toggle("open");
+}
+function closeShortcutsOnOverlay(e) {
+  if (e.target === document.getElementById("shortcutsModal")) toggleShortcuts();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MARKDOWN RENDERER
+═══════════════════════════════════════════════════════════════ */
+function renderMarkdown(text) {
+  let h = escHtml(text);
+  h = h.replace(/```[\w]*\n?([\s\S]*?)```/g, "<pre><code>$1</code></pre>");
+  h = h.replace(/`([^`]+)`/g, "<code>$1</code>");
+  h = h.replace(/^#{3} (.+)$/gm, "<h3>$1</h3>");
+  h = h.replace(/^#{2} (.+)$/gm, "<h2>$1</h2>");
+  h = h.replace(/^# (.+)$/gm,    "<h1>$1</h1>");
+  h = h.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  h = h.replace(/\*(.+?)\*/g,     "<em>$1</em>");
+  h = h.replace(/^&gt; (.+)$/gm,  "<blockquote>$1</blockquote>");
+  h = h.replace(/^\s*[-*•] (.+)$/gm, "<li>$1</li>");
+  h = h.replace(/(<li>[\s\S]*?<\/li>)/g, "<ul>$1</ul>");
+  h = h.replace(/^\s*\d+\. (.+)$/gm, "<li>$1</li>");
+  h = h.replace(/---+/g, "<hr/>");
+  h = h.replace(/\n\n/g, "</p><p>");
+  h = h.replace(/\n/g, "<br/>");
+  return `<p>${h}</p>`;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INPUT AUTO-RESIZE & CHAR COUNT
+═══════════════════════════════════════════════════════════════ */
+function autoResize() {
+  const ta = document.getElementById("userInput");
+  ta.addEventListener("input", () => {
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 180) + "px";
+    updateCharCount();
+  });
+}
+function updateCharCount() {
+  const val = document.getElementById("userInput").value;
+  const el  = document.getElementById("charCount");
+  el.textContent = `${val.length} / 4000`;
+  el.classList.toggle("warn", val.length > 3600);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════════════════════════════════ */
+function bindKeyboard() {
+  document.addEventListener("keydown", (e) => {
+    const isMeta = e.metaKey || e.ctrlKey;
+
+    // Enter to send
+    if (e.key === "Enter" && !e.shiftKey && document.activeElement.id === "userInput") {
+      e.preventDefault();
+      sendMessage();
+      return;
+    }
+    if (isMeta && e.key === "n") { e.preventDefault(); newChat(); }
+    if (isMeta && e.key === "b") { e.preventDefault(); toggleSidebar(); }
+    if (isMeta && e.key === "i") { e.preventDefault(); togglePanel(); }
+    if (isMeta && e.key === "d") { e.preventDefault(); toggleTheme(); }
+    if (isMeta && e.key === "k") { e.preventDefault(); toggleShortcuts(); }
+    if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
+      e.preventDefault();
+      document.getElementById("userInput").focus();
+    }
+    if (e.key === "Escape") {
+      if (document.getElementById("shortcutsModal").classList.contains("open")) toggleShortcuts();
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════════════ */
+init();
+</script>
+</body>
+</html>
